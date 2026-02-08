@@ -1,0 +1,51 @@
+# Python bytecode and caches
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+
+# Virtual environments
+venv/
+env/
+.venv/
+
+# Python package artifacts
+*.egg-info/
+dist/
+build/
+
+# Logs and temp files
+*.log
+*.tmp
+*.bak
+
+# Environment & secrets
+.env
+.env.*
+config/*.secret
+secrets.json
+
+# SQL outputs and dumps
+*.sql.gz
+*.dump
+*.bak.sql
+*.sqlite3
+*.db
+data/outputs/
+exports/
+
+# IDE and tooling
+.vscode/
+.idea/
+*.iml
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Coverage reports
+htmlcov/
+.coverage
+
+# Test artifacts
+.pytest_cache/
