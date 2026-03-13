@@ -61,19 +61,31 @@ else:
 # PREDICTION
 # -------------------------
 
+# -------------------------
+# PREDICTION
+# -------------------------
+
 with col2:
 
     st.subheader("Prediction Result")
 
     if predict_button:
 
-        data=[[cgpa,backlogs,internship,projects,depth,communication,problem]]
+        data = pd.DataFrame([[cgpa, backlogs, internship, projects, depth, communication, problem]],
+        columns=[
+        "cgpa",
+        "backlogs",
+        "internship_relevance",
+        "projects_count",
+        "project_depth",
+        "communication",
+        "problem_solving"
+        ])
 
-        prediction=model.predict(data)[0]
+        prediction = model.predict(data)[0]
+        prob = model.predict_proba(data)[0][1]
 
-        prob=model.predict_proba(data)[0][1]
-
-        if prediction==1:
+        if prediction == 1:
             st.success("✅ Likely to be Placed")
         else:
             st.error("❌ Not Likely to be Placed")
@@ -93,7 +105,7 @@ with col2:
             }
         ))
 
-        st.plotly_chart(gauge)
+        st.plotly_chart(gauge, use_container_width=True)
 
 
 st.markdown("---")
@@ -199,3 +211,23 @@ ax2.barh(features,importance)
 ax2.set_title("Feature Importance")
 
 st.pyplot(fig2)
+
+import streamlit as st
+import sqlite3
+import pandas as pd
+
+st.markdown("---")
+st.subheader("📥 Download Generated Dataset")
+
+conn = sqlite3.connect("placement_final.db")
+
+df = pd.read_sql_query("SELECT * FROM students", conn)
+
+conn.close()
+
+st.download_button(
+    label="Download Dataset as CSV",
+    data=df.to_csv(index=False),
+    file_name="placement_dataset.csv",
+    mime="text/csv"
+)
