@@ -56,11 +56,6 @@ elif model_option == "Logistic Regression":
 else:
     model = dt_model
 
-
-# -------------------------
-# PREDICTION
-# -------------------------
-
 # -------------------------
 # PREDICTION
 # -------------------------
@@ -112,16 +107,14 @@ st.markdown("---")
 st.subheader("🚀 Placement Chance Simulator")
 
 sim_cgpa = st.slider("Simulate CGPA Improvement", 0.0, 10.0, cgpa)
-
 sim_projects = st.slider("Simulate Projects Count", 0, 10, projects)
-
 sim_problem = st.slider("Simulate Problem Solving Skill", 1, 10, problem)
 
 simulate = st.button("Run Simulation")
 
 if simulate:
 
-    sim_data = [[
+    sim_data = pd.DataFrame([[
         sim_cgpa,
         backlogs,
         internship,
@@ -129,7 +122,15 @@ if simulate:
         depth,
         communication,
         sim_problem
-    ]]
+    ]], columns=[
+        "cgpa",
+        "backlogs",
+        "internship_relevance",
+        "projects_count",
+        "project_depth",
+        "communication",
+        "problem_solving"
+    ])
 
     sim_prob = model.predict_proba(sim_data)[0][1]
 
@@ -153,12 +154,23 @@ if simulate:
     st.plotly_chart(gauge2, use_container_width=True)
 
     # current probability
-    current_data = [[cgpa, backlogs, internship, projects, depth, communication, problem]]
+    current_data = pd.DataFrame([[cgpa, backlogs, internship, projects, depth, communication, problem]],
+    columns=[
+        "cgpa",
+        "backlogs",
+        "internship_relevance",
+        "projects_count",
+        "project_depth",
+        "communication",
+        "problem_solving"
+    ])
+
     current_prob = model.predict_proba(current_data)[0][1]
 
     improvement = (sim_prob - current_prob) * 100
 
     st.write("### Improvement:", round(improvement,2), "%")
+
 # -------------------------
 # MODEL PERFORMANCE
 # -------------------------
