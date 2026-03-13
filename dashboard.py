@@ -1,136 +1,201 @@
+import plotly.graph_objects as go
 import streamlit as st
-import sqlite3
-import pandas as pd
 import pickle
+import pandas as pd
+import matplotlib.pyplot as plt
 
-
-
-with open("placement_model.pkl", "rb") as f:
-    lr_model = pickle.load(f)
-
-with open("dt_model.pkl", "rb") as f:
-    dt_model = pickle.load(f)
-
-with open("svm_model.pkl", "rb") as f:
-    svm_model = pickle.load(f)
-
-
-
-
-conn = sqlite3.connect("placement.db")
-df = pd.read_sql_query("SELECT * FROM students", conn)
-conn.close()
-
-
-
-st.set_page_config(
-    page_title="Placement Prediction System",
-    layout="centered"
-)
+st.set_page_config(page_title="Placement Dashboard", layout="wide")
 
 st.title("🎓 Student Placement Prediction Dashboard")
 
+# -------------------------
+# LOAD MODELS
+# -------------------------
+
+log_model = pickle.load(open("final_logistic_model.pkl","rb"))
+dt_model = pickle.load(open("final_decision_tree_model.pkl","rb"))
+rf_model = pickle.load(open("final_random_forest_model.pkl","rb"))
+
+# -------------------------
+# LAYOUT
+# -------------------------
+
+col1, col2 = st.columns([2,1])
+
+# -------------------------
+# INPUT PANEL
+# -------------------------
+
+with col1:
+
+    st.subheader("Student Attributes")
+
+    cgpa = st.number_input("CGPA",0.0,10.0,7.0)
+    backlogs = st.number_input("Backlogs",0,10,0)
+    internship = st.slider("Internship Relevance",1,10,5)
+    projects = st.number_input("Projects Count",0,10,2)
+    depth = st.slider("Project Depth",1,10,5)
+    communication = st.slider("Communication Skill",1,10,5)
+    problem = st.slider("Problem Solving Skill",1,10,5)
+
+    model_option = st.selectbox(
+        "Select Prediction Model",
+        ("Random Forest","Logistic Regression","Decision Tree")
+    )
+
+    predict_button = st.button("Predict Placement")
+
+# -------------------------
+# MODEL SELECTION
+# -------------------------
+
+if model_option == "Random Forest":
+    model = rf_model
+elif model_option == "Logistic Regression":
+    model = log_model
+else:
+    model = dt_model
 
 
+# -------------------------
+# PREDICTION
+# -------------------------
 
-st.sidebar.header("Enter Student Details")
+with col2:
 
-cgpa = st.sidebar.slider("CGPA", 0.0, 10.0, 7.0)
+    st.subheader("Prediction Result")
 
-internships = st.sidebar.slider("Internships", 0, 4, 1)
+    if predict_button:
 
-projects = st.sidebar.slider("Projects", 0, 6, 2)
+        data=[[cgpa,backlogs,internship,projects,depth,communication,problem]]
 
-communication = st.sidebar.slider("Communication Skill", 1, 10, 6)
+        prediction=model.predict(data)[0]
 
+        prob=model.predict_proba(data)[0][1]
 
+        if prediction==1:
+            st.success("✅ Likely to be Placed")
+        else:
+            st.error("❌ Not Likely to be Placed")
 
+        gauge = go.Figure(go.Indicator(
+            mode="gauge+number",
+            value=prob*100,
+            title={'text': "Placement Probability"},
+            gauge={
+                'axis': {'range': [0,100]},
+                'bar': {'color': "green"},
+                'steps': [
+                    {'range': [0,40], 'color': "red"},
+                    {'range': [40,70], 'color': "orange"},
+                    {'range': [70,100], 'color': "green"}
+                ]
+            }
+        ))
 
-st.sidebar.header("Select Model")
-
-model_choice = st.sidebar.selectbox(
-    "Choose Model",
-    [
-        "Logistic Regression",
-        "Decision Tree",
-        "SVM"
-    ]
-)
-
-
-
-st.sidebar.markdown("### 📊 Model Accuracy")
-
-st.sidebar.write("Logistic Regression: ~83%")
-st.sidebar.write("Decision Tree: ~100%")
-st.sidebar.write("SVM: ~82%")
-
-
-
-
-if st.sidebar.button("Predict"):
-
-    data = [[cgpa, internships, projects, communication]]
-
-    result = None
+        st.plotly_chart(gauge)
 
 
-    # Model Selection
-    if model_choice == "Logistic Regression":
-        result = lr_model.predict(data)
+st.markdown("---")
+st.subheader("🚀 Placement Chance Simulator")
 
-    elif model_choice == "Decision Tree":
-        result = dt_model.predict(data)
+sim_cgpa = st.slider("Simulate CGPA Improvement", 0.0, 10.0, cgpa)
 
-    elif model_choice == "SVM":
-        result = svm_model.predict(data)
+sim_projects = st.slider("Simulate Projects Count", 0, 10, projects)
+
+sim_problem = st.slider("Simulate Problem Solving Skill", 1, 10, problem)
+
+simulate = st.button("Run Simulation")
+
+if simulate:
+
+    sim_data = [[
+        sim_cgpa,
+        backlogs,
+        internship,
+        sim_projects,
+        depth,
+        communication,
+        sim_problem
+    ]]
+
+    sim_prob = model.predict_proba(sim_data)[0][1]
+
+    st.write("### New Placement Probability")
+
+    gauge2 = go.Figure(go.Indicator(
+        mode="gauge+number",
+        value=sim_prob*100,
+        title={'text': "Simulated Probability"},
+        gauge={
+            'axis': {'range': [0,100]},
+            'bar': {'color': "blue"},
+            'steps': [
+                {'range': [0,40], 'color': "red"},
+                {'range': [40,70], 'color': "orange"},
+                {'range': [70,100], 'color': "green"}
+            ]
+        }
+    ))
+
+    st.plotly_chart(gauge2, use_container_width=True)
+
+    # current probability
+    current_data = [[cgpa, backlogs, internship, projects, depth, communication, problem]]
+    current_prob = model.predict_proba(current_data)[0][1]
+
+    improvement = (sim_prob - current_prob) * 100
+
+    st.write("### Improvement:", round(improvement,2), "%")
+# -------------------------
+# MODEL PERFORMANCE
+# -------------------------
+
+st.markdown("---")
+st.subheader("📊 Model Accuracy Comparison")
+
+models = ["Logistic Regression","Decision Tree","Random Forest"]
+accuracy = [0.74,0.66,0.71]
+
+fig, ax = plt.subplots()
+ax.bar(models,accuracy)
+
+ax.set_ylabel("Accuracy")
+ax.set_title("Model Performance")
+
+st.pyplot(fig)
 
 
-    # Result Display
-    st.subheader("📌 Prediction Result")
+# -------------------------
+# FEATURE IMPORTANCE
+# -------------------------
 
-    if result is not None and result[0] == 1:
-        st.success("✅ Student is Likely to be Placed")
+st.markdown("---")
+st.subheader("🧠 Feature Importance ")
 
-    elif result is not None and result[0] == 0:
-        st.error("❌ Student is Not Likely to be Placed")
+features=[
+"CGPA",
+"Backlogs",
+"Internship",
+"Projects",
+"Project Depth",
+"Communication",
+"Problem Solving"
+]
 
-    else:
-        st.warning("⚠️ Prediction Failed. Try Again.")
+if model_option == "Random Forest":
+    importance = rf_model.feature_importances_
 
+elif model_option == "Decision Tree":
+    importance = dt_model.feature_importances_
 
+else:
+    importance = abs(log_model.coef_[0])
 
+fig2, ax2 = plt.subplots()
 
-st.subheader("📊 Dataset Overview")
+ax2.barh(features,importance)
 
-total = len(df)
-placed = df["placed"].sum()
-not_placed = total - placed
+ax2.set_title("Feature Importance")
 
-
-col1, col2, col3 = st.columns(3)
-
-col1.metric("Total Students", total)
-col2.metric("Placed", placed)
-col3.metric("Not Placed", not_placed)
-
-
-
-
-st.subheader("📈 Placement Distribution")
-
-st.bar_chart(df["placed"].value_counts())
-
-
-
-st.subheader("📉 Feature Correlation with Placement")
-
-corr = df.corr()["placed"].sort_values(ascending=False)
-
-st.write(corr)
-
-
-
-
-with st.expander("📁 View Raw Dataset"):
-    st.dataframe(df)
+st.pyplot(fig2)
